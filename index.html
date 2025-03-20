@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relógio Fullscreen com Clima e Animação</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #349877;
+            color: #fff;
+            font-family: "Montserrat", sans-serif;
+            font-optical-sizing: auto;
+            font-weight: 700;
+            font-style: normal;
+        }
+
+        .clock {
+            text-align: center;
+            background-color: #349877;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .clock.fullscreen {
+            width: 100vw;
+            height: 100vh;
+            border-radius: 0;
+            box-shadow: none;
+        }
+
+        .time {
+            font-size: 15vw;
+            display: flex;
+            justify-content: center;
+        }
+
+        .digit {
+            display: inline-block;
+            transition: transform 0.2s ease, opacity 0.2s ease;
+        }
+
+        .animate {
+            transform: translateY(-20px);
+            opacity: 0.5;
+        }
+
+        .logofps {
+            font-size: 4.5em;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .location {
+            font-size: 1.719em;
+            margin-top: 10px;
+            color: #fff;
+            opacity: 0.9;
+        }
+        .date {
+            font-size: 1.719em;
+        }
+
+        .weather, .sunrise-sunset {
+            font-size: 20px;
+            margin-top: 10px;
+            opacity: 0.7;
+        }
+
+        .fullscreen-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: #349877;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+
+        .fullscreen-btn:hover {
+            background-color: #349877;
+        }
+    </style>
+</head>
+<body>
+    <div class="clock" id="clock">
+        <button class="fullscreen-btn" onclick="toggleFullscreen()">🔲</button>
+        <div class="logofps">FPS</div>
+        <div class="location">Horário Atual em Recife</div>
+        <div class="time" id="time"></div>
+        <div class="date" id="date"></div>
+        <div class="weather" id="weather">Carregando clima...</div>
+        <div class="sunrise-sunset" id="sun-info">Nascer do Sol: 05:23 | Pôr do Sol: 17:30</div>
+    </div>
+
+    <script>
+        let previousTime = "";
+
+        function formatNumber(num) {
+            return num < 10 ? "0" + num : num;
+        }
+
+        function createDigitElement(char) {
+            const span = document.createElement("span");
+            span.classList.add("digit");
+            span.textContent = char;
+            return span;
+        }
+
+        function updateClock() {
+            const now = new Date();
+            const hours = formatNumber(now.getHours());
+            const minutes = formatNumber(now.getMinutes());
+            const seconds = formatNumber(now.getSeconds());
+            const currentTime = `${hours}:${minutes}:${seconds}`;
+
+            const days = ["Domingo", "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado"];
+            const months = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+            const dayName = days[now.getDay()];
+            const monthName = months[now.getMonth()];
+            const dateString = `${dayName}, ${now.getDate()} de ${monthName}`;
+            document.getElementById("date").textContent = dateString;
+
+            const timeElement = document.getElementById("time");
+
+            // Inicializa os dígitos apenas uma vez
+            if (timeElement.children.length === 0) {
+                for (let i = 0; i < currentTime.length; i++) {
+                    timeElement.appendChild(createDigitElement(currentTime[i]));
+                }
+                previousTime = currentTime;
+                return;
+            }
+
+            // Atualiza apenas os dígitos que mudam
+            for (let i = 0; i < currentTime.length; i++) {
+                const char = currentTime[i];
+                const digitElement = timeElement.children[i];
+                if (digitElement.textContent !== char) {
+                    digitElement.textContent = char;
+                    digitElement.classList.add("animate");
+                    setTimeout(() => digitElement.classList.remove("animate"), 200);
+                }
+            }
+
+            previousTime = currentTime;
+        }
+
+        async function getWeather() {
+            const apiKey = "e6c06cd171064320144ee6474e9dead1";
+            const city = "Recife";
+            const url = `https://api.openweathermap.org/data/2.5/weather?q=${city}&lang=pt_br&units=metric&appid=${apiKey}`;
+
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+
+                const temp = data.main.temp.toFixed(1);
+                const feelsLike = data.main.feels_like.toFixed(1);
+                const description = data.weather[0].description;
+                const sunrise = new Date(data.sys.sunrise * 1000).toLocaleTimeString("pt-BR").slice(0, 5);
+                const sunset = new Date(data.sys.sunset * 1000).toLocaleTimeString("pt-BR").slice(0, 5);
+
+                document.getElementById("weather").textContent = `Clima: ${description}, ${temp}°C (Sensação: ${feelsLike}°C)`;
+                document.getElementById("sun-info").textContent = `Nascer do Sol: ${sunrise} | Pôr do Sol: ${sunset}`;
+            } catch (error) {
+                document.getElementById("weather").textContent = "Erro ao obter o clima";
+                console.error("Erro ao buscar dados do clima:", error);
+            }
+        }
+
+        function toggleFullscreen() {
+            const clock = document.getElementById("clock");
+            if (!document.fullscreenElement) {
+                clock.requestFullscreen().catch(err => alert(`Erro ao ativar fullscreen: ${err.message}`));
+                clock.classList.add("fullscreen");
+            } else {
+                document.exitFullscreen();
+                clock.classList.remove("fullscreen");
+            }
+        }
+
+        setInterval(updateClock, 1000);
+        updateClock();
+        getWeather();
+        setInterval(getWeather, 60000);
+    </script>
+</body>
+</html>
